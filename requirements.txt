@@ -1,0 +1,5 @@
+fastapi
+Flask-Cors
+uvicorn[standard]
+selenium
+pydantic
