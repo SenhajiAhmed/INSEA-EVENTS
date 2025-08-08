@@ -3,26 +3,27 @@ import os
 import re
 import time
 from datetime import datetime
+import logging
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 class ProductInfoScraper:
-    def __init__(self, driver, key, input_folder="out", output_folder="out"):
+    def __init__(self, driver, key, logger: logging.Logger, input_folder="out", output_folder="out"):
         self.driver = driver
+        self.logger = logger
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.output_path = os.path.join(self.output_folder, f"product_details_live_{key}.json")
         self.links = self._load_latest_urls()
         self.results = self._load_existing_data()
 
-        
-
     def _load_latest_urls(self):
         pattern = "products_"
         files = [f for f in os.listdir(self.input_folder) if f.startswith(pattern) and f.endswith(".json")]
         if not files:
+            self.logger.error("Aucun fichier de produits trouvé dans le dossier 'out/'.")
             raise FileNotFoundError("Aucun fichier de produits trouvé dans le dossier 'out/'.")
 
         files.sort(key=lambda x: datetime.strptime(x.split("_")[1] + "_" + x.split("_")[2].replace(".json", ""), "%Y-%m-%d_%H-%M-%S"), reverse=True)
@@ -40,10 +41,10 @@ class ProductInfoScraper:
             with open(self.output_path, "r", encoding="utf-8") as f:
                 try:
                     data = json.load(f)
-                    print(f"🧠 {len(data)} liens déjà traités.")
+                    self.logger.info(f" {len(data)} liens déjà traités.")
                     return data
                 except json.JSONDecodeError:
-                    print("⚠️ Fichier de sortie corrompu. Nouveau fichier créé.")
+                    self.logger.warning(" Fichier de sortie corrompu. Nouveau fichier créé.")
                     return []
         return []
 
@@ -61,17 +62,17 @@ class ProductInfoScraper:
             name = link["name"]
 
             if self._has_been_scraped(href):
-                print(f"⏭️ Déjà traité : {href}")
+                self.logger.info(f" Déjà traité : {href}")
                 continue
 
-            print(f"\n➡️ Scraping {index}/{len(self.links)}: {name}")
+            self.logger.info(f"\n Scraping {index}/{len(self.links)}: {name}")
             try:
                 self.driver.get(href)
                 time.sleep(1)
 
                 data = {
                     "url": href,
-                    "name": name  # 🔥 ajoute le nom ici
+                    "name": name  # ajoute le nom ici
                 }
 
                 WebDriverWait(self.driver, 15).until(
@@ -132,8 +133,8 @@ class ProductInfoScraper:
 
                 # Sauvegarde immédiate
                 self._save_one(data)
-                print(f"✅ Données sauvegardées pour : {href}")
+                self.logger.info(f" Données sauvegardées pour : {href}")
 
             except Exception as e:
-                print(f"❌ Erreur scraping {href} : {e}")
+                self.logger.error(f" Erreur scraping {href} : {e}")
                 continue

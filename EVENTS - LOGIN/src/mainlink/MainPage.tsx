@@ -27,7 +27,7 @@ const features = [
 ];
 
 const navLinks = [
-  { label: 'Hasty Pudding Institute', href: '#' },
+  { label: 'Dashboard', href: '/dashboard' },
   { label: 'Hasty Pudding Club', href: '#' },
   { label: 'Hasty Pudding Theatricals', href: '#' },
   { label: 'Kroks', href: '#' },
@@ -71,15 +71,33 @@ export default function MainPage() {
         aria-hidden="true"
       />
       {/* Header */}
-      <header className="w-full sticky top-0 z-20" style={{ background: 'linear-gradient(90deg, #1a1443 0%, #232046 40%, #2d1e4f 70%, #3a225a 100%)' }}>
-        <div className="max-w-7xl mx-auto flex flex-row items-center py-1 px-6">
-          <img src={INSEALogo} alt="Logo" className="h-20 w-auto mr-10 animate-fade-in drop-shadow-xl" style={{minWidth: '5rem'}} />
+      <header className="w-full sticky top-0 z-20 backdrop-blur-md border-b border-white/10" 
+        style={{ 
+          background: 'linear-gradient(135deg, rgba(26, 20, 67, 0.95) 0%, rgba(35, 32, 70, 0.9) 25%, rgba(45, 30, 79, 0.85) 50%, rgba(58, 34, 90, 0.9) 75%, rgba(67, 36, 104, 0.95) 100%)',
+          boxShadow: '0 8px 32px rgba(26, 20, 67, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
+        }}>
+        <div className="max-w-7xl mx-auto flex flex-row items-center py-3 px-6">
+          <div className="relative">
+            <img 
+              src={INSEALogo} 
+              alt="Logo" 
+              className="h-16 w-auto mr-10 animate-fade-in transition-transform duration-300 hover:scale-105" 
+              style={{
+                minWidth: '5rem',
+                filter: 'drop-shadow(0 4px 12px rgba(139, 92, 246, 0.4)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.2))'
+              }} 
+            />
+            <div className="absolute -inset-2 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-lg opacity-75"></div>
+          </div>
           <nav className="flex gap-8 flex-1">
-            {navLinks.map((link) => (
+            {navLinks.map((link, index) => (
               <a
                 key={link.label}
                 href={link.href}
                 className="relative px-1 py-1 text-lg font-medium transition-colors duration-200 hover:text-purple-300 group"
+                style={{
+                  color: 'rgba(255, 255, 255, 0.9)'
+                }}
               >
                 {link.label}
                 <span
@@ -88,7 +106,15 @@ export default function MainPage() {
               </a>
             ))}
           </nav>
+          {/* Additional header decoration */}
+          <div className="hidden md:flex items-center space-x-2">
+            <div className="w-2 h-2 bg-white/60 rounded-full animate-pulse"></div>
+            <div className="w-1 h-1 bg-white/40 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+            <div className="w-1.5 h-1.5 bg-white/50 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
+          </div>
         </div>
+        {/* Bottom gradient line */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
       </header>
       {/* Hero Section with Background */}
       <section className="min-h-screen flex flex-col items-center justify-center px-4 relative z-10">

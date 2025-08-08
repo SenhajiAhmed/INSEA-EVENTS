@@ -1,5 +1,6 @@
 import json
 from typing import List, Dict, Any
+import logging
 
 
 class ProductNormalizer:
@@ -13,9 +14,10 @@ class ProductNormalizer:
         "details",
     ]
 
-    def __init__(self, input_path: str, output_path: str = None):
+    def __init__(self, input_path: str, output_path: str = None, logger: logging.Logger = None):
         self.input_path = input_path
         self.output_path = output_path
+        self.logger = logger
 
     @staticmethod
     def is_numeric_string(value: Any) -> bool:
@@ -73,13 +75,20 @@ class ProductNormalizer:
             data = json.load(f)
 
         if not isinstance(data, list):
-            raise ValueError("Erreur : le JSON racine doit être une liste de produits.")
+            if self.logger:
+                self.logger.error("Erreur : le JSON racine doit être une liste de produits.")
+            else:
+                raise ValueError("Erreur : le JSON racine doit être une liste de produits.")
 
         normalized = self.normalize_products(data)
 
         if self.output_path:
             with open(self.output_path, "w", encoding="utf-8") as f:
                 json.dump(normalized, f, ensure_ascii=False, indent=2)
-            print(f"Fichier normalisé écrit : {self.output_path}")
+            if self.logger:
+                self.logger.info(f"Fichier normalisé écrit : {self.output_path}")
         else:
-            print(json.dumps(normalized, ensure_ascii=False, indent=2))
+            if self.logger:
+                self.logger.info(json.dumps(normalized, ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps(normalized, ensure_ascii=False, indent=2))

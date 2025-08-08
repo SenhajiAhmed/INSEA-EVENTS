@@ -1,13 +1,15 @@
 import json
 import os
+import logging
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 class ProductExtractor:
-    def __init__(self, driver, filter_by_first_class=False):
+    def __init__(self, driver, logger, filter_by_first_class=False):
         self.driver = driver
+        self.logger = logger
         self.filter_by_first_class = filter_by_first_class
         self.output_dir = "out"
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -55,8 +57,8 @@ class ProductExtractor:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     def run(self):
-        print("[🔍] Extracting <a> tags with class and href...")
+        self.logger.info("[🔍] Extracting <a> tags with class and href...")
         data = self.extract_links()
-        print(f"[✅] Found {len(data)} matching links.")
+        self.logger.info(f"[✅] Found {len(data)} matching links.")
         self.save_to_json(data)
-        print(f"[💾] Saved to {self.output_path}")
+        self.logger.info(f"[💾] Saved to {self.output_path}")

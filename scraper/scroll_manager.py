@@ -4,10 +4,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, JavascriptException
 from config import settings
+import logging
 
 class ScrollManager:
-    def __init__(self, driver):
+    def __init__(self, driver, logger):
         self.driver = driver
+        self.logger = logger
         self._container = None
 
     # ---------- helpers -------------------------------------------------
@@ -44,7 +46,7 @@ class ScrollManager:
                     ))
                 )
                 self._container = self._find_scrollable_parent(feed)
-                print("Scroll container located:", self._container.get_attribute("class"))
+                self.logger.info("Scroll container located: %s", self._container.get_attribute("class"))
             except TimeoutException as e:
                 raise RuntimeError("Scroll container not found") from e
         return self._container
@@ -75,12 +77,12 @@ class ScrollManager:
                     break
             else:
                 stale_count += 1
-                print(f"[DEBUG] Height unchanged for {stale_count} cycle(s).")
+                self.logger.debug("Height unchanged for %d cycle(s).", stale_count)
 
             last_sh = metrics["sh"]
-            print(f"Loop {loops}: scrollHeight={last_sh}")
+            self.logger.info("Loop %d: scrollHeight=%d", loops, last_sh)
 
         if stale_count >= max_stale:
-            print("Scrolling appears finished (no new content).")
+            self.logger.info("Scrolling appears finished (no new content).")
         else:
-            print(f"Reached max loops ({settings.MAX_SCROLL_LOOPS}).")
+            self.logger.info("Reached max loops (%d).", settings.MAX_SCROLL_LOOPS)

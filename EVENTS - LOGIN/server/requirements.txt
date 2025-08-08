@@ -1,0 +1,72 @@
+# INSEA Events Backend Dependencies
+# Generated on 2025-01-08
+
+# Core Framework
+express@^4.18.2
+
+# Database
+mysql2@^3.6.5
+
+# Authentication & Security
+bcryptjs@^2.4.3
+jsonwebtoken@^9.0.2
+cors@^2.8.5
+
+# File Upload
+multer@^1.4.5-lts.1
+
+# Environment Variables
+dotenv@^16.3.1
+
+# Utilities
+slugify@^1.6.6
+uuid@^11.1.0
+
+# Development Dependencies (recommended additions)
+nodemon@^3.0.3
+
+# Testing (recommended additions)
+jest@^29.7.0
+supertest@^6.3.4
+@types/jest@^29.5.11
+
+# Code Quality (recommended additions)
+eslint@^8.56.0
+prettier@^3.2.4
+eslint-config-prettier@^9.1.0
+eslint-plugin-node@^11.1.0
+
+# Logging (recommended addition)
+winston@^3.11.0
+
+# Validation (recommended addition)
+joi@^17.12.0
+express-validator@^7.0.1
+
+# Rate Limiting (recommended addition)
+express-rate-limit@^7.1.5
+
+# Helmet for Security (recommended addition)
+helmet@^7.1.0
+
+# Compression (recommended addition)
+compression@^1.7.4
+
+# Process Management (production)
+pm2@^5.3.0
+
+# Node.js Version Requirement
+# Node.js >= 18.0.0
+# npm >= 9.0.0
+
+# Database Requirements
+# MySQL >= 8.0.0 or MariaDB >= 10.6.0
+
+# Environment Variables Required:
+# DB_HOST=localhost
+# DB_USER=your_username
+# DB_PASSWORD=your_password
+# DB_NAME=insea_events
+# DB_PORT=3306
+# JWT_SECRET=your_jwt_secret_key
+# PORT=3000
