@@ -14,6 +14,36 @@ import {
 import { format } from 'date-fns';
 import { ArrowBack, FormatQuote } from '@mui/icons-material';
 import { Post } from '../types';
+import { 
+  Snowflake, 
+  MapPin, 
+  Users, 
+  Clock, 
+  Award, 
+  Star, 
+  Thermometer, 
+  Shield,
+  Zap,
+  Calendar,
+  Heart,
+  Bookmark
+} from 'lucide-react';
+
+// Icon mapping for technical specifications
+const iconMap: { [key: string]: React.ComponentType<any> } = {
+  Snowflake,
+  MapPin,
+  Users,
+  Clock,
+  Award,
+  Star,
+  Thermometer,
+  Shield,
+  Zap,
+  Calendar,
+  Heart,
+  Bookmark
+};
 
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -341,6 +371,205 @@ const BlogPostPage: React.FC = () => {
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
           </Paper>
+
+          {/* Quick Info Section */}
+          {post.quick_info && (
+            <Paper 
+              elevation={0}
+              sx={{ 
+                background: 'rgba(139, 92, 246, 0.1)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: 3,
+                p: 6,
+                mb: 6
+              }}
+            >
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  color: 'white',
+                  fontWeight: 600,
+                  mb: 4
+                }}
+              >
+                Quick Info
+              </Typography>
+              {(() => {
+                try {
+                  const parsed = JSON.parse(post.quick_info);
+                  const rows = Array.isArray(parsed)
+                    ? parsed
+                    : (parsed && typeof parsed === 'object')
+                      ? Object.entries(parsed).map(([key, value]) => ({ key, value }))
+                      : [];
+                  if (rows.length > 0) {
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {rows.map((field: any, index: number) => (
+                          <div key={index} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '8px 0',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}>
+                            <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>
+                              {(field.key ?? field.label) + ':'}
+                            </span>
+                            <span style={{ color: 'white', fontWeight: 600 }}>
+                              {String(field.value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                } catch (e) {
+                  // If parsing fails, treat as HTML/text content
+                }
+                return (
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      lineHeight: 1.8,
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {post.quick_info}
+                  </Typography>
+                );
+              })()}
+            </Paper>
+          )}
+
+          {/* Technical Specifications Section */}
+          {post.technical_specs && (
+            <Paper 
+              elevation={0}
+              sx={{ 
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 3,
+                p: 6,
+                mb: 6
+              }}
+            >
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  color: 'white',
+                  fontWeight: 600,
+                  mb: 4
+                }}
+              >
+                Technical Specifications
+              </Typography>
+              {(() => {
+                try {
+                  const parsed = JSON.parse(post.technical_specs);
+                  const specs = Array.isArray(parsed)
+                    ? parsed
+                    : (parsed && typeof parsed === 'object')
+                      ? Object.entries(parsed).map(([key, value]) => ({ key, value }))
+                      : [];
+                  if (specs.length > 0) {
+                    return (
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 3 }}>
+                        {specs.map((spec: any, index: number) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              p: 3,
+                              bgcolor: 'rgba(255, 255, 255, 0.05)',
+                              borderRadius: 2,
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                bgcolor: 'rgba(255, 255, 255, 0.08)',
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 8px 25px rgba(139, 92, 246, 0.15)'
+                              }
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                              <Box
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  bgcolor: 'rgba(139, 92, 246, 0.2)',
+                                  borderRadius: 2,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  mr: 2
+                                }}
+                              >
+                                {(() => {
+                                  const IconComponent = iconMap[spec.icon] || Star;
+                                  return <IconComponent size={20} color="#8b5cf6" />;
+                                })()}
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
+                                  {spec.label ?? spec.key}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#8b5cf6', fontWeight: 500 }}>
+                                  {String(spec.value)}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            {spec.category && (
+                              <Box
+                                sx={{
+                                  display: 'inline-block',
+                                  px: 1.5,
+                                  py: 0.5,
+                                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: 1,
+                                  fontSize: '0.75rem',
+                                  color: 'rgba(255, 255, 255, 0.6)'
+                                }}
+                              >
+                                {spec.category}
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                    );
+                  }
+                } catch (e) {
+                  // If parsing fails, treat as HTML content
+                }
+                return (
+                  <Box 
+                    component="div"
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      lineHeight: 1.8,
+                      '& p': { mb: 3 },
+                      '& h2': { mt: 4, mb: 2, fontWeight: 'bold', color: 'white' },
+                      '& h3': { mt: 3, mb: 1.5, fontWeight: 'bold', color: 'white' },
+                      '& ul, & ol': { pl: 4, mb: 2 },
+                      '& li': { mb: 1 },
+                      '& code': {
+                        fontFamily: 'monospace',
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        color: '#e2e8f0',
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 1,
+                        fontSize: '0.9em'
+                      }
+                    }}
+                    dangerouslySetInnerHTML={{ __html: post.technical_specs }}
+                  />
+                );
+              })()}
+            </Paper>
+          )}
 
           {/* Call to Action */}
           <Paper 

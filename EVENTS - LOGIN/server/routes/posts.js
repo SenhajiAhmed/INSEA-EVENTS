@@ -67,7 +67,7 @@ router.get('/', async (req, res) => {
     try {
         console.log('Fetching all posts...');
         const [posts] = await pool.query(`
-            SELECT p.id, p.title, p.content, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
+            SELECT p.id, p.title, p.content, p.technical_specs, p.quick_info, p.event_program, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             ORDER BY p.created_at DESC
@@ -88,7 +88,7 @@ router.get('/:slug', async (req, res) => {
         console.log('Fetching post by slug:', slug);
         
         const [posts] = await pool.query(`
-            SELECT p.id, p.title, p.content, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
+            SELECT p.id, p.title, p.content, p.technical_specs, p.quick_info, p.event_program, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             WHERE p.slug = ?
@@ -113,7 +113,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
         console.log('Body keys:', Object.keys(req.body));
         console.log('File:', req.file ? 'Present' : 'Not present');
 
-        const { title, content } = req.body;
+        const { title, content, technical_specs, quick_info, event_program } = req.body;
         const userId = req.user.userId;
 
         // Validation
@@ -142,18 +142,27 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
         const slug = generateSlug(title);
         console.log('Generated slug:', slug);
 
-        // Insert the post (much simpler query!)
+        // Insert the post with new fields
         console.log('Inserting post...');
         const [result] = await pool.query(
-            'INSERT INTO posts (title, content, image_path, slug, user_id) VALUES (?, ?, ?, ?, ?)',
-            [title, content, imagePath, slug, userId]
+            'INSERT INTO posts (title, content, technical_specs, quick_info, event_program, image_path, slug, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              title,
+              content,
+              technical_specs && technical_specs.trim() !== '' ? technical_specs : null,
+              quick_info && quick_info.trim() !== '' ? quick_info : null,
+              event_program && event_program.trim() !== '' ? event_program : null,
+              imagePath,
+              slug,
+              userId
+            ]
         );
 
         console.log('Post inserted successfully:', result.insertId);
 
         // Fetch the complete post
         const [posts] = await pool.query(`
-            SELECT p.id, p.title, p.content, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
+            SELECT p.id, p.title, p.content, p.technical_specs, p.quick_info, p.event_program, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             WHERE p.id = ?
@@ -192,7 +201,7 @@ router.get('/id/:id', async (req, res) => {
         console.log('Fetching post by ID:', id);
         
         const [posts] = await pool.query(`
-            SELECT p.id, p.title, p.content, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
+            SELECT p.id, p.title, p.content, p.technical_specs, p.quick_info, p.event_program, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             WHERE p.id = ?
@@ -216,7 +225,7 @@ router.get('/my-posts', authenticateToken, async (req, res) => {
         console.log('Fetching posts by user ID:', userId);
         
         const [posts] = await pool.query(`
-            SELECT p.id, p.title, p.content, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
+            SELECT p.id, p.title, p.content, p.technical_specs, p.quick_info, p.event_program, p.image_path, p.slug, p.created_at, p.updated_at, u.username 
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             WHERE p.user_id = ? 
@@ -237,7 +246,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         console.log('Updating post by ID:', id);
         
-        const { title, content } = req.body;
+        const { title, content, technical_specs, quick_info, event_program } = req.body;
         const userId = req.user.userId;
 
         // First, verify the post exists and belongs to the user
@@ -251,10 +260,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Forbidden: You can only edit your own posts' });
         }
 
-        // Update the post
+        // Update the post with new fields
         await pool.query(
-            'UPDATE posts SET title = ?, content = ? WHERE id = ?',
-            [title || posts[0].title, content || posts[0].content, id]
+            'UPDATE posts SET title = ?, content = ?, technical_specs = ?, quick_info = ?, event_program = ? WHERE id = ?',
+            [
+              title || posts[0].title,
+              content || posts[0].content,
+              typeof technical_specs === 'string' ? (technical_specs.trim() === '' ? null : technical_specs) : (posts[0].technical_specs ?? null),
+              typeof quick_info === 'string' ? (quick_info.trim() === '' ? null : quick_info) : (posts[0].quick_info ?? null),
+              typeof event_program === 'string' ? (event_program.trim() === '' ? null : event_program) : (posts[0].event_program ?? null),
+              id
+            ]
         );
 
         res.json({ message: 'Post updated successfully' });

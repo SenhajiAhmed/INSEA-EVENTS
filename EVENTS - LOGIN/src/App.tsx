@@ -1,10 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
 import LoginPage from './mainlink/authentification/LoginPage';
 import SignupPage from './components/SignupPage';
 import MainPage from './mainlink/MainPage';
 import DashboardPage from './mainlink/dashboard/DashboardPage';
-import BlogPostPage from './pages/BlogPostPage';
+import PostPage from './mainlink/dashboard/PostPage';
 
 // Public route component - only for unauthenticated users
 const PublicRoute = () => {
@@ -42,7 +41,7 @@ function AppRoutes() {
 
       {/* Public routes - accessible to all */}
       <Route path="/main" element={<MainPage />} />
-      <Route path="/blog/:slug" element={<BlogPostPage />} />
+      <Route path="/blog/:slug" element={<PostPage />} />
       
       {/* Fallback route */}
       <Route 

@@ -21,7 +21,7 @@ type SidebarLink = {
   path?: string; // For external or separate page navigation
 };
 
-const sidebarLinks: SidebarLink[] = [
+const sidebarLinks: SidebarLink[] = [ 
   { name: 'Dashboard', icon: '📊', view: 'dashboard' },
   { name: 'My Posts', icon: '✍️', view: 'my-posts' },
   { name: 'Create Post', icon: '✏️', view: 'create-post' },
@@ -48,11 +48,19 @@ export default function DashboardPage() {
   // State for blog post creation
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
+  const [postTechnicalSpecs, setPostTechnicalSpecs] = useState('');
+  const [postQuickInfo, setPostQuickInfo] = useState('');
+  const [postEventProgram, setPostEventProgram] = useState('');
   const [postImage, setPostImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Dynamic section rows (table-like)
+  const [techItems, setTechItems] = useState<Array<{ key: string; value: string; icon?: string; category?: string; show: boolean }>>([]);
+  const [quickItems, setQuickItems] = useState<Array<{ key: string; value: string; show: boolean }>>([]);
+  const [programItems, setProgramItems] = useState<Array<{ time: string; activity: string; description?: string; show: boolean }>>([]);
 
   // State lifted from ScraperPage
   const [isScraping, setIsScraping] = useState<boolean>(false);
@@ -94,6 +102,8 @@ export default function DashboardPage() {
       eventSourceRef.current?.close();
     };
   }, []);
+
+  const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
   const handleScrape = async (keyword: string) => {
     if (!keyword) {
@@ -157,6 +167,12 @@ export default function DashboardPage() {
       return;
     }
 
+    if (!token) {
+      setError('You are not authenticated. Please log in again.');
+      navigate('/login', { replace: true });
+      return;
+    }
+
     setIsSaving(true);
     setError('');
 
@@ -165,7 +181,30 @@ export default function DashboardPage() {
       const formData = new FormData();
       formData.append('title', postTitle.trim());
       formData.append('content', postContent.trim());
-      
+
+      // Build JSON payloads only when there are visible rows
+      const techPayload = techItems.filter(i => i.show && i.key.trim() && i.value.trim());
+      if (techPayload.length > 0) {
+        formData.append('technical_specs', JSON.stringify(techPayload));
+      } else if (postTechnicalSpecs.trim()) {
+        // fallback: allow raw HTML/text if user typed into legacy textarea
+        formData.append('technical_specs', postTechnicalSpecs.trim());
+      }
+
+      const quickPayload = quickItems.filter(i => i.show && i.key.trim() && i.value.trim());
+      if (quickPayload.length > 0) {
+        formData.append('quick_info', JSON.stringify(quickPayload));
+      } else if (postQuickInfo.trim()) {
+        formData.append('quick_info', postQuickInfo.trim());
+      }
+
+      const programPayload = programItems.filter(i => i.show && (i.time.trim() || i.activity.trim() || (i.description ?? '').trim()));
+      if (programPayload.length > 0) {
+        formData.append('event_program', JSON.stringify(programPayload));
+      } else if (postEventProgram.trim()) {
+        formData.append('event_program', postEventProgram.trim());
+      }
+
       // Append the actual file if present
       if (postImage) {
         formData.append('image', postImage);
@@ -182,7 +221,7 @@ export default function DashboardPage() {
         }
       }
 
-      const response = await fetch('http://localhost:3000/api/posts', {
+      const response = await fetch(`${API_BASE}/api/posts`, {
         method: 'POST',
         headers: {
           // Remove Content-Type header - let browser set it for FormData
@@ -213,6 +252,12 @@ export default function DashboardPage() {
       // Reset form
       setPostTitle('');
       setPostContent('');
+      setPostTechnicalSpecs('');
+      setPostQuickInfo('');
+      setPostEventProgram('');
+      setTechItems([]);
+      setQuickItems([]);
+      setProgramItems([]);
       setPostImage(null);
       setImagePreview(null);
       setError('');
@@ -232,6 +277,12 @@ export default function DashboardPage() {
   const handleClearForm = () => {
     setPostTitle('');
     setPostContent('');
+    setPostTechnicalSpecs('');
+    setPostQuickInfo('');
+    setPostEventProgram('');
+    setTechItems([]);
+    setQuickItems([]);
+    setProgramItems([]);
     setPostImage(null);
     setImagePreview(null);
     setSaveMessage('');
@@ -258,46 +309,115 @@ export default function DashboardPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen w-full flex bg-[#181824]">
+    <div 
+      className="min-h-screen w-full flex"
+      style={{
+        backgroundColor: 'hsl(240 15% 9%)', // --background
+        '--background': '240 15% 9%',
+        '--card': '240 20% 12%',
+        '--card-hover': '240 25% 15%',
+        '--muted': '240 20% 15%',
+        '--primary': '260 85% 55%',
+        '--primary-dark': '260 90% 45%',
+        '--primary-light': '260 80% 65%',
+        '--secondary': '240 25% 18%',
+        '--accent': '280 85% 60%',
+        '--border': '240 25% 20%',
+        '--input': '240 20% 15%',
+        '--foreground': '270 10% 95%',
+        '--card-foreground': '270 8% 92%',
+        '--muted-foreground': '260 15% 65%',
+        '--primary-foreground': '270 10% 98%',
+        '--sidebar-background': '260 45% 8%',
+        '--sidebar-primary': '260 85% 55%',
+        '--sidebar-accent': '260 25% 12%'
+      } as React.CSSProperties}
+    >
       {/* Sidebar */}
       <aside 
-        className="flex flex-col min-h-screen h-screen w-64 min-w-[220px] max-w-xs p-4 text-gray-200 overflow-y-auto scrollbar-none" 
+        className="flex flex-col min-h-screen h-screen w-64 min-w-[240px] max-w-xs text-gray-200 overflow-y-auto scrollbar-none" 
         style={{ 
           scrollbarWidth: 'none', 
           msOverflowStyle: 'none',
-          background: 'linear-gradient(135deg, rgba(26, 20, 67, 0.95) 0%, rgba(35, 32, 70, 0.9) 25%, rgba(45, 30, 79, 0.85) 50%, rgba(58, 34, 90, 0.9) 75%, rgba(67, 36, 104, 0.95) 100%)',
-          boxShadow: '8px 0 32px rgba(26, 20, 67, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
-          borderRight: '1px solid rgba(255, 255, 255, 0.1)'
+          backgroundColor: 'hsl(var(--sidebar-background))',
+          borderRight: '1px solid hsl(var(--border) / 0.2)',
+          padding: '0 16px 24px 16px'
         }}
       >
         <style>{`
           aside::-webkit-scrollbar { display: none; }
         `}</style>
-        <div className="flex flex-col items-center mb-8">
-          <ImageWithFallback src={INSEALogo} alt="INSEA Logo" className="w-16 h-16 mb-2" />
-          <span className="text-xl font-bold text-purple-400">INSEA</span>
+        
+        {/* Logo Section */}
+        <div className="flex flex-col items-center mb-0">
+          <div className="h-40 h-21 flex items-center justify-center">
+            <img 
+              src={INSEALogo} 
+              alt="INSEA Events Logo" 
+              className="w-full h-full object-contain"
+              style={{ 
+                filter: 'drop-shadow(0 0 10px hsl(var(--primary) / 0.3))'
+              }}
+            />
+          </div>
         </div>
-        <div className="flex flex-col items-center mb-8">
-          <img src={userProfileImg} alt="Profile" className="w-14 h-14 rounded-full border-2 border-purple-400 mb-2" />
-          <span className="font-semibold">David Grey. H</span>
-          <span className="text-xs text-gray-400">Project Manager</span>
+        
+        {/* User Profile Section */}
+        <div className="flex items-center mb-8 pb-4" style={{ borderBottom: '1px solid hsl(var(--border) / 0.2)' }}>
+          <div 
+            className="w-10 h-10 rounded-full flex items-center justify-center mr-3 shadow-lg flex-shrink-0"
+            style={{ 
+              background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+              boxShadow: '0 0 15px hsl(var(--primary) / 0.3)'
+            }}
+          >
+            <span className="text-white font-semibold text-sm">DG</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm mb-0.5 truncate" style={{ color: 'hsl(var(--foreground))' }}>David Grey. H</div>
+            <div className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>Project Manager</div>
+          </div>
         </div>
-        <nav className="flex-1 w-full">
+        
+        {/* Navigation Section */}
+        <nav className="flex-1 w-full space-y-2">
           {sidebarLinks.map((link, idx) => (
             <button
               key={idx}
-              className={`flex items-center w-full px-4 py-2 mb-1 rounded-lg hover:bg-purple-800/40 transition ${activeView === link.view ? 'bg-purple-800 text-white' : ''}`}
+              className="flex items-center w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 font-medium"
+              style={{
+                backgroundColor: activeView === link.view 
+                  ? 'hsl(var(--primary))' 
+                  : 'transparent',
+                color: activeView === link.view 
+                  ? 'hsl(var(--primary-foreground))' 
+                  : 'hsl(var(--muted-foreground))',
+                boxShadow: activeView === link.view 
+                  ? '0 0 20px hsl(var(--primary) / 0.3)' 
+                  : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (activeView !== link.view) {
+                  e.currentTarget.style.backgroundColor = 'hsl(var(--secondary) / 0.5)';
+                  e.currentTarget.style.color = 'hsl(var(--foreground))';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeView !== link.view) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'hsl(var(--muted-foreground))';
+                }
+              }}
               onClick={() => {
                 if (link.view) {
                   setActiveView(link.view);
                 } else if (link.path) {
                   navigate(link.path);
                 }
-                // Do nothing if neither view nor path is defined
               }}
             >
-              <span className="mr-3 text-lg">{link.icon}</span>
-              <span className="text-sm font-medium">{link.name}</span>
+              <span className="mr-4 text-lg">{link.icon}</span>
+              <span>{link.name}</span>
             </button>
           ))}
         </nav>
@@ -307,184 +427,350 @@ export default function DashboardPage() {
       <div 
         className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden"
         style={{
-          background: '#1B1A27',
+          backgroundColor: 'hsl(var(--background))',
           position: 'relative',
           overflow: 'auto'
         }}
       >
-        {/* Gradient Overlay */}
-        <div 
+        {/* Top Header */}
+        <header 
+          className="flex items-center justify-between px-8 py-4 relative z-20 backdrop-blur-sm"
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(47, 36, 72, 0.9) 0%, rgba(27, 26, 39, 0.95) 100%)',
-            pointerEvents: 'none',
-            zIndex: 0
+            backgroundColor: 'hsl(var(--background) / 0.95)',
+            borderBottom: '1px solid hsl(var(--border) / 0.3)',
+            boxShadow: '0 8px 32px hsl(var(--background) / 0.8)'
           }}
-        />
-        
-        {/* Scrollable Content */}
-        <div className="relative z-10">
-          {/* Top Header */}
-          <header 
-            className="flex items-center justify-between px-8 py-4 relative z-20"
-            style={{
-              background: 'linear-gradient(135deg, rgba(26, 20, 67, 0.95) 0%, rgba(35, 32, 70, 0.9) 25%, rgba(45, 30, 79, 0.85) 50%, rgba(58, 34, 90, 0.9) 75%, rgba(67, 36, 104, 0.95) 100%)',
-              boxShadow: '0 8px 32px rgba(26, 20, 67, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <div className="flex items-center gap-2">
+        >
+          <div className="flex items-center gap-2">
+            <div className="relative">
               <input
                 type="text"
                 placeholder="Search projects"
-                className="bg-[#23213a] text-gray-200 rounded-lg px-4 py-2 outline-none border-none placeholder-gray-400 w-64"
+                className="rounded-lg px-4 py-2 pl-10 outline-none text-sm transition-all duration-200"
+                style={{
+                  backgroundColor: 'hsl(var(--card) / 0.5)',
+                  border: '1px solid hsl(var(--border) / 0.3)',
+                  color: 'hsl(var(--foreground))',
+                  width: '320px'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'hsl(var(--primary) / 0.5)';
+                  e.target.style.boxShadow = '0 0 0 2px hsl(var(--primary) / 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'hsl(var(--border) / 0.3)';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
+              <span 
+                className="absolute left-3 top-1/2 transform -translate-y-1/2"
+                style={{ color: 'hsl(var(--muted-foreground))' }}
+              >
+                🔍
+              </span>
             </div>
-            <div className="flex items-center gap-4">
-              <img src={userProfileImg} alt="Profile" className="w-8 h-8 rounded-full" />
-              <span className="text-gray-200 font-medium">David Greymaax</span>
-              <span className="text-xl">🔔</span>
-              <span className="text-xl">⚙️</span>
-              <Button onClick={handleLogout} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
-                Logout
-              </Button>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-lg transition-colors duration-200 cursor-pointer hover:text-purple-400" style={{ color: 'hsl(var(--muted-foreground))' }}>🔔</span>
+            <span className="text-lg transition-colors duration-200 cursor-pointer hover:text-purple-400" style={{ color: 'hsl(var(--muted-foreground))' }}>⚙️</span>
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
+              style={{ 
+                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                boxShadow: '0 0 15px hsl(var(--primary) / 0.3)'
+              }}
+            >
+              <span className="text-white font-medium text-sm">DG</span>
             </div>
-          </header>
+            <span className="font-medium text-sm" style={{ color: 'hsl(var(--foreground))' }}>David Greymaax</span>
+            <Button 
+              onClick={handleLogout} 
+              className="font-medium py-2 px-4 rounded-lg text-sm transition-all duration-200 shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)))',
+                color: 'hsl(var(--primary-foreground))',
+                border: 'none',
+                boxShadow: '0 4px 15px hsl(var(--primary) / 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px hsl(var(--primary) / 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px hsl(var(--primary) / 0.3)';
+              }}
+            >
+              Logout
+            </Button>
+          </div>
+        </header>
 
+        {/* Scrollable Content */}
+        <div className="relative z-10 flex-1 overflow-auto">
           {/* Main Content Area */}
           {activeView === 'dashboard' ? (
-            <main className="w-full h-full p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 relative z-10">
-              {/* Visit And Sales Statistics (Bar Chart Placeholder) */}
-              <section className="rounded-2xl p-4 md:p-6 flex flex-col min-h-[250px] h-full transition-all duration-300 hover:transform hover:-translate-y-1"
+            <main className="w-full h-full p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
+              {/* Visit And Sales Statistics (Bar Chart) */}
+              <section 
+                className="lg:col-span-2 rounded-2xl p-6 flex flex-col transition-all duration-300 backdrop-blur-sm"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '20px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card-hover)))',
+                  border: '1px solid hsl(var(--border) / 0.3)',
+                  boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px hsl(var(--background) / 0.4), 0 0 0 1px hsl(var(--primary) / 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px hsl(var(--background) / 0.3)';
                 }}
               >
-                <div className="flex items-center mb-4">
-                  <span className="bg-purple-800 p-2 rounded-lg mr-2">📊</span>
-                  <h2 className="text-lg font-bold text-white">Visit And Sales Statistics</h2>
-                  <span className="ml-auto text-xs text-gray-400">CH | USA | UK</span>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <span className="text-lg mr-3">📊</span>
+                    <h2 className="text-lg font-semibold" style={{ color: 'hsl(var(--card-foreground))' }}>Visit And Sales Statistics</h2>
+                  </div>
+                  <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>CH | USA | UK</span>
                 </div>
-                <div className="flex-1 flex items-center justify-center text-gray-400 min-h-[120px]">
-                  {/* Replace with chart library later */}
-                  <span>[Bar Chart Placeholder]</span>
+                <div className="flex-1 flex items-end justify-center gap-3 min-h-[200px] pb-4">
+                  {/* Bar Chart */}
+                  <div className="flex items-end gap-2 h-40">
+                    {[60, 80, 70, 90, 75, 85, 65].map((height, index) => (
+                      <div
+                        key={index}
+                        className="w-8 rounded-t transition-all duration-300 cursor-pointer"
+                        style={{
+                          height: `${height}%`,
+                          background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                          boxShadow: '0 4px 15px hsl(var(--primary) / 0.2)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scaleY(1.05)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px hsl(var(--primary) / 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scaleY(1)';
+                          e.currentTarget.style.boxShadow = '0 4px 15px hsl(var(--primary) / 0.2)';
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </section>
 
-              {/* Traffic Sources (Donut Chart Placeholder) */}
-              <section className="rounded-2xl p-4 md:p-6 flex flex-col min-h-[250px] h-full transition-all duration-300 hover:transform hover:-translate-y-1"
+              {/* Traffic Sources (Donut Chart) */}
+              <section 
+                className="rounded-2xl p-6 flex flex-col transition-all duration-300 backdrop-blur-sm"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '20px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary-light)))',
+                  boxShadow: '0 8px 32px hsl(var(--primary) / 0.2), 0 0 40px hsl(var(--primary) / 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--primary) / 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px hsl(var(--primary) / 0.2), 0 0 40px hsl(var(--primary) / 0.1)';
                 }}
               >
-                <div className="flex items-center mb-4">
-                  <span className="bg-pink-600 p-2 rounded-lg mr-2">🍩</span>
-                  <h2 className="text-lg font-bold text-white">Traffic Sources</h2>
-                  <span className="ml-auto text-xs text-gray-400">Overview</span>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold" style={{ color: 'hsl(var(--primary-foreground))' }}>Traffic Sources</h2>
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 min-h-[120px]">
-                  {/* Replace with chart library later */}
-                  <span>[Donut Chart Placeholder]</span>
-                  <div className="mt-4 flex flex-col gap-1 text-sm">
-                    <span className="text-cyan-400">● Search Engines <span className="ml-2 text-gray-300">30%</span></span>
-                    <span className="text-green-400">● Direct Click <span className="ml-2 text-gray-300">30%</span></span>
-                    <span className="text-pink-400">● Bookmarks Click <span className="ml-2 text-gray-300">40%</span></span>
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  {/* Donut Chart */}
+                  <div className="relative w-32 h-32 mb-4">
+                    <div 
+                      className="w-32 h-32 rounded-full transition-transform duration-300"
+                      style={{
+                        background: `conic-gradient(
+                          #60a5fa 0deg 108deg,
+                          #34d399 108deg 216deg,
+                          #f472b6 216deg 360deg
+                        )`,
+                        boxShadow: '0 8px 25px hsl(var(--background) / 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <div 
+                        className="absolute inset-4 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: 'hsl(var(--primary-dark))' }}
+                      >
+                        <span className="text-white text-xs">📈</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm w-full" style={{ color: 'hsl(var(--primary-foreground))' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
+                        <span>Search Engines</span>
+                      </div>
+                      <span>30%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 rounded-full bg-green-400 mr-2"></div>
+                        <span>Direct Click</span>
+                      </div>
+                      <span>30%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 rounded-full bg-pink-400 mr-2"></div>
+                        <span>Bookmarks Click</span>
+                      </div>
+                      <span>40%</span>
+                    </div>
                   </div>
                 </div>
               </section>
 
               {/* Recent Updates */}
-              <section className="rounded-2xl p-4 md:p-6 flex flex-col min-h-[250px] h-full transition-all duration-300 hover:transform hover:-translate-y-1"
+              <section 
+                className="lg:col-span-2 rounded-2xl p-6 flex flex-col transition-all duration-300 backdrop-blur-sm"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '20px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card-hover)))',
+                  border: '1px solid hsl(var(--border) / 0.3)',
+                  boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px hsl(var(--background) / 0.4), 0 0 0 1px hsl(var(--primary) / 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px hsl(var(--background) / 0.3)';
                 }}
               >
-                <h2 className="text-lg font-bold text-white mb-4">Recent Updates</h2>
+                <div className="flex items-center mb-6">
+                  <span className="text-lg mr-3">👥</span>
+                  <h2 className="text-lg font-semibold" style={{ color: 'hsl(var(--card-foreground))' }}>Recent Updates</h2>
+                </div>
                 <div className="flex gap-4 items-center">
-                  <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=facearea&w=120&q=80" alt="update" className="w-16 h-16 rounded-lg object-cover" />
-                  <div>
-                    <p className="text-white font-semibold">jack Menqu</p>
-                    <p className="text-gray-400 text-xs">October 3rd, 2018</p>
-                    <p className="text-gray-300 mt-2">Updated project dashboard and added new widgets.</p>
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
+                    style={{ 
+                      background: '#f59e0b',
+                      boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)'
+                    }}
+                  >
+                    <span className="text-white font-medium text-sm">JM</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium" style={{ color: 'hsl(var(--card-foreground))' }}>jack Menou</p>
+                    <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>October 3rd, 2018</p>
+                    <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Updated project dashboard and added new widgets.</p>
                   </div>
                 </div>
               </section>
 
               {/* Calendar Widget */}
-              <section className="rounded-2xl p-4 flex flex-col transition-all duration-300 hover:transform hover:-translate-y-1"
+              <section 
+                className="rounded-2xl p-6 flex flex-col transition-all duration-300 backdrop-blur-sm"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '20px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  background: 'linear-gradient(135deg, hsl(var(--card)), hsl(var(--card-hover)))',
+                  border: '1px solid hsl(var(--border) / 0.3)',
+                  boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px hsl(var(--background) / 0.4), 0 0 0 1px hsl(var(--primary) / 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px hsl(var(--background) / 0.3)';
                 }}
               >
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  className="w-full"
-                  classNames={{
-                    root: "w-full h-full flex flex-col justify-center",
-                    months: "w-full",
-                    month: "w-full space-y-4",
-                    table: "w-full border-collapse",
-                    head_row: "flex justify-around",
-                    row: "flex w-full mt-2 justify-around",
-                    day: "h-9 w-9 text-center p-0 relative font-normal rounded-md hover:bg-purple-500/20",
-                    day_selected: "bg-purple-600 text-white hover:bg-purple-700 focus:bg-purple-600",
-                    day_today: "bg-gray-700/50 rounded-md",
-                    day_outside: "text-gray-500 opacity-50",
-                    day_disabled: "text-gray-600 opacity-50",
-                  }}
-                />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium" style={{ color: 'hsl(var(--card-foreground))' }}>August 2025</h3>
+                  <span className="text-lg" style={{ color: 'hsl(var(--primary))' }}>📅</span>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-xs">
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                    <div key={day} className="text-center py-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      {day}
+                    </div>
+                  ))}
+                  
+                  {/* Calendar days */}
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <div
+                      key={day}
+                      className="text-center py-2 rounded cursor-pointer transition-all duration-200"
+                      style={{
+                        backgroundColor: day === 9 
+                          ? 'hsl(var(--primary))' 
+                          : day === 16 
+                            ? 'hsl(var(--primary) / 0.2)' 
+                            : 'transparent',
+                        color: day === 9 
+                          ? 'hsl(var(--primary-foreground))' 
+                          : day === 16 
+                            ? 'hsl(var(--primary))' 
+                            : 'hsl(var(--card-foreground))',
+                        boxShadow: day === 9 ? '0 2px 8px hsl(var(--primary) / 0.3)' : 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (day !== 9 && day !== 16) {
+                          e.currentTarget.style.backgroundColor = 'hsl(var(--muted) / 0.3)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (day !== 9 && day !== 16) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
               </section>
             </main>
           ) : activeView === 'create-post' ? (
             <main className="flex-1 w-full h-full overflow-auto">
-              <div className="flex-1 overflow-y-auto p-4 md:p-8">
+              <div className="flex-1 overflow-y-auto p-8">
                 <div className="max-w-4xl mx-auto">
-                  <div className="bg-[#232135] rounded-2xl shadow-lg p-6 md:p-8">
+                  <div 
+                    className="rounded-2xl shadow-lg p-8"
+                    style={{
+                      backgroundColor: 'hsl(var(--input))',
+                      border: '1px solid hsl(var(--border) / 0.3)',
+                      boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
+                    }}
+                  >
                     <div className="flex items-center mb-6">
-                      <span className="bg-purple-800 p-3 rounded-lg mr-4 text-2xl">✏️</span>
+                      <span className="bg-purple-600 p-3 rounded-lg mr-4 text-2xl">✏️</span>
                       <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-white">Create New Blog Post</h1>
-                        <p className="text-gray-400 mt-1">Share your thoughts and ideas with the community</p>
+                        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Create New Blog Post</h1>
+                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Share your thoughts and ideas with the community</p>
                       </div>
                     </div>
 
                     {saveMessage && (
-                      <div className={`mb-6 p-4 rounded-lg ${saveMessage.includes('success') ? 'bg-green-800/20 border border-green-600 text-green-400' : 'bg-red-800/20 border border-red-600 text-red-400'}`}>
+                      <div className={`mb-6 p-4 rounded-lg ${saveMessage.includes('success') ? 'bg-emerald-800/30 border border-emerald-500/50 text-emerald-300' : 'bg-red-800/30 border border-red-500/50 text-red-300'}`}>
                         {saveMessage}
                       </div>
                     )}
 
                     {error && (
-                      <div className="mb-6 p-4 rounded-lg bg-red-800/20 border border-red-600 text-red-400">
+                      <div className="mb-6 p-4 rounded-lg bg-red-800/30 border border-red-500/50 text-red-300">
                         {error}
                       </div>
                     )}
 
                     <div className="space-y-6">
                       <div>
-                        <label htmlFor="post-title" className="block text-sm font-medium text-gray-300 mb-2">
+                        <label htmlFor="post-title" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
                           Post Title *
                         </label>
                         <Input
@@ -492,13 +778,18 @@ export default function DashboardPage() {
                           value={postTitle}
                           onChange={(e) => setPostTitle(e.target.value)}
                           placeholder="Enter an engaging title for your post..."
-                          className="bg-[#181824] border-gray-600 text-white placeholder-gray-400 text-lg h-12"
+                          className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 text-lg h-12 focus:border-purple-500 focus:ring-purple-500/20"
                           disabled={isSaving}
+                          style={{
+                            backgroundColor: 'hsl(var(--input))',
+                            border: '1px solid hsl(var(--border) / 0.3)',
+                            color: 'hsl(var(--foreground))'
+                          }}
                         />
                       </div>
 
                       <div>
-                        <label htmlFor="post-image" className="block text-sm font-medium text-gray-300 mb-2">
+                        <label htmlFor="post-image" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
                           Featured Image
                         </label>
                         <div className="space-y-4">
@@ -507,16 +798,21 @@ export default function DashboardPage() {
                             type="file"
                             accept="image/*"
                             onChange={handleImageChange}
-                            className="w-full"
+                            className="w-full bg-gray-800/50 border-gray-700/50 text-gray-300 file:bg-purple-600 file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4"
+                            style={{
+                              backgroundColor: 'hsl(var(--input))',
+                              border: '1px solid hsl(var(--border) / 0.3)',
+                              color: 'hsl(var(--foreground))'
+                            }}
                           />
                           
                           {imagePreview && (
                             <div className="mt-4">
-                              <p className="text-sm font-medium mb-2">Preview:</p>
+                              <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
                               <img
                                 src={imagePreview}
                                 alt="Featured image preview"
-                                className="max-w-full h-auto rounded-lg border"
+                                className="max-w-full h-auto rounded-lg border border-gray-700/50"
                                 style={{ maxHeight: '300px' }}
                               />
                             </div>
@@ -525,7 +821,7 @@ export default function DashboardPage() {
                       </div>
 
                       <div>
-                        <label htmlFor="post-content" className="block text-sm font-medium text-gray-300 mb-2">
+                        <label htmlFor="post-content" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
                           Post Content *
                         </label>
                         <Textarea
@@ -533,12 +829,99 @@ export default function DashboardPage() {
                           value={postContent}
                           onChange={(e) => setPostContent(e.target.value)}
                           placeholder="Write your post content here... You can use HTML tags for formatting."
-                          className="bg-[#181824] border-gray-600 text-white placeholder-gray-400 min-h-[400px] resize-none"
+                          className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 min-h-[400px] resize-none focus:border-purple-500 focus:ring-purple-500/20"
                           disabled={isSaving}
+                          style={{
+                            backgroundColor: 'hsl(var(--input))',
+                            border: '1px solid hsl(var(--border) / 0.3)',
+                            color: 'hsl(var(--foreground))'
+                          }}
                         />
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                           Tip: You can use HTML tags like &lt;p&gt;, &lt;h2&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, etc. for formatting.
                         </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Technical Specifications (table-like)
+                          </label>
+                          <Button
+                            type="button"
+                            onClick={() => setTechItems(prev => [...prev, { key: '', value: '', icon: '', category: '', show: true }])}
+                            className="text-xs"
+                          >+ Add Row</Button>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {techItems.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                              <Input className="col-span-3" placeholder="Label (e.g., Location)" value={item.key} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
+                              <Input className="col-span-4" placeholder="Value" value={item.value} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
+                              <Input className="col-span-2" placeholder="Icon (optional)" value={item.icon ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, icon: e.target.value }: r))} />
+                              <Input className="col-span-2" placeholder="Category (opt)" value={item.category ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, category: e.target.value }: r))} />
+                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          Tip: Leave icon/category blank to use a simple key/value look like the old static tables.
+                        </p>
+                        <div className="mt-3">
+                          <label htmlFor="post-technical-specs" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Or paste legacy HTML (optional)
+                          </label>
+                          <Textarea id="post-technical-specs" value={postTechnicalSpecs} onChange={(e)=>setPostTechnicalSpecs(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<table>...</table>" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Quick Info (key/value)
+                          </label>
+                          <Button type="button" onClick={() => setQuickItems(prev => [...prev, { key: '', value: '', show: true }])} className="text-xs">+ Add Row</Button>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {quickItems.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                              <Input className="col-span-5" placeholder="Title (e.g., Published)" value={item.key} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
+                              <Input className="col-span-6" placeholder="Value" value={item.value} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
+                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3">
+                          <label htmlFor="post-quick-info" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Or paste legacy text/HTML (optional)
+                          </label>
+                          <Textarea id="post-quick-info" value={postQuickInfo} onChange={(e)=>setPostQuickInfo(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="Quick bullets or HTML" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Event Program & Schedule
+                          </label>
+                          <Button type="button" onClick={() => setProgramItems(prev => [...prev, { time: '', activity: '', description: '', show: true }])} className="text-xs">+ Add Row</Button>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {programItems.map((item, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                              <Input className="col-span-3" placeholder="Time" value={item.time} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, time: e.target.value }: r))} />
+                              <Input className="col-span-5" placeholder="Activity" value={item.activity} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, activity: e.target.value }: r))} />
+                              <Input className="col-span-3" placeholder="Description (opt)" value={item.description ?? ''} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, description: e.target.value }: r))} />
+                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3">
+                          <label htmlFor="post-event-program" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Or paste legacy HTML (optional)
+                          </label>
+                          <Textarea id="post-event-program" value={postEventProgram} onChange={(e)=>setPostEventProgram(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<ul>...</ul>" />
+                        </div>
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -546,6 +929,20 @@ export default function DashboardPage() {
                           onClick={handleCreatePost} 
                           disabled={isSaving || !postTitle.trim() || !postContent.trim()}
                           className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors flex-1 sm:flex-none"
+                          style={{
+                            background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)))',
+                            color: 'hsl(var(--primary-foreground))',
+                            border: 'none',
+                            boxShadow: '0 4px 15px hsl(var(--primary) / 0.3)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px hsl(var(--primary) / 0.4)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px hsl(var(--primary) / 0.3)';
+                          }}
                         >
                           {isSaving ? (
                             <>
@@ -565,6 +962,10 @@ export default function DashboardPage() {
                           onClick={handleClearForm}
                           disabled={isSaving}
                           className="border-gray-600 text-gray-300 hover:bg-gray-700 py-3 px-6 rounded-lg transition-colors"
+                          style={{
+                            border: '1px solid hsl(var(--border) / 0.3)',
+                            color: 'hsl(var(--foreground))'
+                          }}
                         >
                           Clear Form
                         </Button>
@@ -574,6 +975,10 @@ export default function DashboardPage() {
                           onClick={() => navigate('/blog')}
                           disabled={isSaving}
                           className="border-purple-600 text-purple-400 hover:bg-purple-800/20 py-3 px-6 rounded-lg transition-colors"
+                          style={{
+                            border: '1px solid hsl(var(--primary))',
+                            color: 'hsl(var(--primary))'
+                          }}
                         >
                           View Blog
                         </Button>
@@ -582,22 +987,22 @@ export default function DashboardPage() {
 
                     {/* Preview Section */}
                     {(postTitle || postContent || imagePreview) && (
-                      <div className="mt-8 pt-8 border-t border-gray-700">
-                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                      <div className="mt-8 pt-8 border-t border-gray-700/50">
+                        <h3 className="text-lg font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                           <span className="mr-2">👁️</span>
                           Preview
                         </h3>
-                        <div className="bg-[#181824] rounded-lg p-6 border border-gray-700">
+                        <div className="bg-gray-800/30 rounded-lg p-6 border border-gray-700/50">
                           {postTitle && (
-                            <h2 className="text-2xl font-bold text-white mb-4">{postTitle}</h2>
+                            <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{postTitle}</h2>
                           )}
                           {imagePreview && (
                             <div className="mb-6">
-                              <p className="text-sm font-medium mb-2">Preview:</p>
+                              <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
                               <img
                                 src={imagePreview}
                                 alt="Featured image preview"
-                                className="max-w-full h-auto rounded-lg border"
+                                className="max-w-full h-auto rounded-lg border border-gray-700/50"
                                 style={{ maxHeight: '300px' }}
                               />
                             </div>

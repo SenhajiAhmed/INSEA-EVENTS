@@ -88,7 +88,13 @@ const MyPostsView: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ title: postData.title, content: postData.content }),
+        body: JSON.stringify({ 
+          title: postData.title, 
+          content: postData.content,
+          technical_specs: postData.technical_specs,
+          quick_info: postData.quick_info,
+          event_program: postData.event_program
+        }),
       });
 
       if (!response.ok) {
