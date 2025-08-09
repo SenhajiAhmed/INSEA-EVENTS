@@ -42,6 +42,7 @@ const sidebarLinks: SidebarLink[] = [
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [token, setToken] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [date, setDate] = useState<Date | undefined>(new Date()); // Add state for the calendar
 
@@ -146,10 +147,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
+    const storedIsAdmin = localStorage.getItem('isAdmin');
     if (!storedToken) {
       navigate('/login', { replace: true });
     } else {
       setToken(storedToken);
+      if (storedIsAdmin) {
+        try {
+          setIsAdmin(JSON.parse(storedIsAdmin) === true);
+        } catch {
+          setIsAdmin(false);
+        }
+      }
     }
   }, [navigate]);
 
@@ -381,7 +390,13 @@ export default function DashboardPage() {
         
         {/* Navigation Section */}
         <nav className="flex-1 w-full space-y-2">
-          {sidebarLinks.map((link, idx) => (
+          {sidebarLinks
+            .filter((link) => {
+              // Hide admin-only links for non-admins
+              if (!isAdmin && (link.view === 'scraper' || link.view === 'create-post')) return false;
+              return true;
+            })
+            .map((link, idx) => (
             <button
               key={idx}
               className="flex items-center w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 font-medium"
@@ -410,6 +425,8 @@ export default function DashboardPage() {
               }}
               onClick={() => {
                 if (link.view) {
+                  // Block navigation to admin-only views when not admin
+                  if (!isAdmin && (link.view === 'scraper' || link.view === 'create-post')) return;
                   setActiveView(link.view);
                 } else if (link.path) {
                   navigate(link.path);
@@ -442,7 +459,13 @@ export default function DashboardPage() {
           }}
         >
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div 
+              className="relative"
+              style={{ 
+                backgroundColor: 'hsl(var(--background))',
+                padding: '0 16px 24px 16px'
+              }}
+            >
               <input
                 type="text"
                 placeholder="Search projects"
@@ -738,298 +761,307 @@ export default function DashboardPage() {
             </main>
           ) : activeView === 'create-post' ? (
             <main className="flex-1 w-full h-full overflow-auto">
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="max-w-4xl mx-auto">
-                  <div 
-                    className="rounded-2xl shadow-lg p-8"
-                    style={{
-                      backgroundColor: 'hsl(var(--input))',
-                      border: '1px solid hsl(var(--border) / 0.3)',
-                      boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
-                    }}
-                  >
-                    <div className="flex items-center mb-6">
-                      <span className="bg-purple-600 p-3 rounded-lg mr-4 text-2xl">✏️</span>
-                      <div>
-                        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Create New Blog Post</h1>
-                        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Share your thoughts and ideas with the community</p>
-                      </div>
-                    </div>
-
-                    {saveMessage && (
-                      <div className={`mb-6 p-4 rounded-lg ${saveMessage.includes('success') ? 'bg-emerald-800/30 border border-emerald-500/50 text-emerald-300' : 'bg-red-800/30 border border-red-500/50 text-red-300'}`}>
-                        {saveMessage}
-                      </div>
-                    )}
-
-                    {error && (
-                      <div className="mb-6 p-4 rounded-lg bg-red-800/30 border border-red-500/50 text-red-300">
-                        {error}
-                      </div>
-                    )}
-
-                    <div className="space-y-6">
-                      <div>
-                        <label htmlFor="post-title" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                          Post Title *
-                        </label>
-                        <Input
-                          id="post-title"
-                          value={postTitle}
-                          onChange={(e) => setPostTitle(e.target.value)}
-                          placeholder="Enter an engaging title for your post..."
-                          className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 text-lg h-12 focus:border-purple-500 focus:ring-purple-500/20"
-                          disabled={isSaving}
-                          style={{
-                            backgroundColor: 'hsl(var(--input))',
-                            border: '1px solid hsl(var(--border) / 0.3)',
-                            color: 'hsl(var(--foreground))'
-                          }}
-                        />
+              {!isAdmin ? (
+                <div className="p-8 text-red-400">You are not authorized to access Create Post.</div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-8">
+                  <div className="max-w-4xl mx-auto">
+                    <div 
+                      className="rounded-2xl shadow-lg p-8"
+                      style={{
+                        backgroundColor: 'hsl(var(--input))',
+                        border: '1px solid hsl(var(--border) / 0.3)',
+                        boxShadow: '0 8px 32px hsl(var(--background) / 0.3)'
+                      }}
+                    >
+                      <div className="flex items-center mb-6">
+                        <span className="bg-purple-600 p-3 rounded-lg mr-4 text-2xl">✏️</span>
+                        <div>
+                          <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>Create New Blog Post</h1>
+                          <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Share your thoughts and ideas with the community</p>
+                        </div>
                       </div>
 
-                      <div>
-                        <label htmlFor="post-image" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                          Featured Image
-                        </label>
-                        <div className="space-y-4">
+                      {saveMessage && (
+                        <div className={`mb-6 p-4 rounded-lg ${saveMessage.includes('success') ? 'bg-emerald-800/30 border border-emerald-500/50 text-emerald-300' : 'bg-red-800/30 border border-red-500/50 text-red-300'}`}>
+                          {saveMessage}
+                        </div>
+                      )}
+
+                      {error && (
+                        <div className="mb-6 p-4 rounded-lg bg-red-800/30 border border-red-500/50 text-red-300">
+                          {error}
+                        </div>
+                      )}
+
+                      <div className="space-y-6">
+                        <div>
+                          <label htmlFor="post-title" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Post Title *
+                          </label>
                           <Input
-                            id="post-image"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            className="w-full bg-gray-800/50 border-gray-700/50 text-gray-300 file:bg-purple-600 file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4"
+                            id="post-title"
+                            value={postTitle}
+                            onChange={(e) => setPostTitle(e.target.value)}
+                            placeholder="Enter an engaging title for your post..."
+                            className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 text-lg h-12 focus:border-purple-500 focus:ring-purple-500/20"
+                            disabled={isSaving}
                             style={{
                               backgroundColor: 'hsl(var(--input))',
                               border: '1px solid hsl(var(--border) / 0.3)',
                               color: 'hsl(var(--foreground))'
                             }}
                           />
-                          
-                          {imagePreview && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
-                              <img
-                                src={imagePreview}
-                                alt="Featured image preview"
-                                className="max-w-full h-auto rounded-lg border border-gray-700/50"
-                                style={{ maxHeight: '300px' }}
-                              />
-                            </div>
-                          )}
                         </div>
-                      </div>
 
-                      <div>
-                        <label htmlFor="post-content" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                          Post Content *
-                        </label>
-                        <Textarea
-                          id="post-content"
-                          value={postContent}
-                          onChange={(e) => setPostContent(e.target.value)}
-                          placeholder="Write your post content here... You can use HTML tags for formatting."
-                          className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 min-h-[400px] resize-none focus:border-purple-500 focus:ring-purple-500/20"
-                          disabled={isSaving}
-                          style={{
-                            backgroundColor: 'hsl(var(--input))',
-                            border: '1px solid hsl(var(--border) / 0.3)',
-                            color: 'hsl(var(--foreground))'
-                          }}
-                        />
-                        <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Tip: You can use HTML tags like &lt;p&gt;, &lt;h2&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, etc. for formatting.
-                        </p>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                            Technical Specifications (table-like)
+                        <div>
+                          <label htmlFor="post-image" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Featured Image
                           </label>
-                          <Button
-                            type="button"
-                            onClick={() => setTechItems(prev => [...prev, { key: '', value: '', icon: '', category: '', show: true }])}
-                            className="text-xs"
-                          >+ Add Row</Button>
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {techItems.map((item, idx) => (
-                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                              <Input className="col-span-3" placeholder="Label (e.g., Location)" value={item.key} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
-                              <Input className="col-span-4" placeholder="Value" value={item.value} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
-                              <Input className="col-span-2" placeholder="Icon (optional)" value={item.icon ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, icon: e.target.value }: r))} />
-                              <Input className="col-span-2" placeholder="Category (opt)" value={item.category ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, category: e.target.value }: r))} />
-                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Tip: Leave icon/category blank to use a simple key/value look like the old static tables.
-                        </p>
-                        <div className="mt-3">
-                          <label htmlFor="post-technical-specs" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Or paste legacy HTML (optional)
-                          </label>
-                          <Textarea id="post-technical-specs" value={postTechnicalSpecs} onChange={(e)=>setPostTechnicalSpecs(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<table>...</table>" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                            Quick Info (key/value)
-                          </label>
-                          <Button type="button" onClick={() => setQuickItems(prev => [...prev, { key: '', value: '', show: true }])} className="text-xs">+ Add Row</Button>
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {quickItems.map((item, idx) => (
-                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                              <Input className="col-span-5" placeholder="Title (e.g., Published)" value={item.key} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
-                              <Input className="col-span-6" placeholder="Value" value={item.value} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
-                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3">
-                          <label htmlFor="post-quick-info" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Or paste legacy text/HTML (optional)
-                          </label>
-                          <Textarea id="post-quick-info" value={postQuickInfo} onChange={(e)=>setPostQuickInfo(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="Quick bullets or HTML" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                            Event Program & Schedule
-                          </label>
-                          <Button type="button" onClick={() => setProgramItems(prev => [...prev, { time: '', activity: '', description: '', show: true }])} className="text-xs">+ Add Row</Button>
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {programItems.map((item, idx) => (
-                            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                              <Input className="col-span-3" placeholder="Time" value={item.time} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, time: e.target.value }: r))} />
-                              <Input className="col-span-5" placeholder="Activity" value={item.activity} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, activity: e.target.value }: r))} />
-                              <Input className="col-span-3" placeholder="Description (opt)" value={item.description ?? ''} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, description: e.target.value }: r))} />
-                              <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3">
-                          <label htmlFor="post-event-program" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                            Or paste legacy HTML (optional)
-                          </label>
-                          <Textarea id="post-event-program" value={postEventProgram} onChange={(e)=>setPostEventProgram(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<ul>...</ul>" />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                        <Button 
-                          onClick={handleCreatePost} 
-                          disabled={isSaving || !postTitle.trim() || !postContent.trim()}
-                          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors flex-1 sm:flex-none"
-                          style={{
-                            background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)))',
-                            color: 'hsl(var(--primary-foreground))',
-                            border: 'none',
-                            boxShadow: '0 4px 15px hsl(var(--primary) / 0.3)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 6px 20px hsl(var(--primary) / 0.4)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px hsl(var(--primary) / 0.3)';
-                          }}
-                        >
-                          {isSaving ? (
-                            <>
-                              <span className="animate-spin mr-2">⏳</span>
-                              Publishing...
-                            </>
-                          ) : (
-                            <>
-                              <span className="mr-2">🚀</span>
-                              Publish Post
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          onClick={handleClearForm}
-                          disabled={isSaving}
-                          className="border-gray-600 text-gray-300 hover:bg-gray-700 py-3 px-6 rounded-lg transition-colors"
-                          style={{
-                            border: '1px solid hsl(var(--border) / 0.3)',
-                            color: 'hsl(var(--foreground))'
-                          }}
-                        >
-                          Clear Form
-                        </Button>
-
-                        <Button 
-                          variant="outline" 
-                          onClick={() => navigate('/blog')}
-                          disabled={isSaving}
-                          className="border-purple-600 text-purple-400 hover:bg-purple-800/20 py-3 px-6 rounded-lg transition-colors"
-                          style={{
-                            border: '1px solid hsl(var(--primary))',
-                            color: 'hsl(var(--primary))'
-                          }}
-                        >
-                          View Blog
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Preview Section */}
-                    {(postTitle || postContent || imagePreview) && (
-                      <div className="mt-8 pt-8 border-t border-gray-700/50">
-                        <h3 className="text-lg font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                          <span className="mr-2">👁️</span>
-                          Preview
-                        </h3>
-                        <div className="bg-gray-800/30 rounded-lg p-6 border border-gray-700/50">
-                          {postTitle && (
-                            <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{postTitle}</h2>
-                          )}
-                          {imagePreview && (
-                            <div className="mb-6">
-                              <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
-                              <img
-                                src={imagePreview}
-                                alt="Featured image preview"
-                                className="max-w-full h-auto rounded-lg border border-gray-700/50"
-                                style={{ maxHeight: '300px' }}
-                              />
-                            </div>
-                          )}
-                          {postContent && (
-                            <div 
-                              className="text-gray-300 prose prose-invert max-w-none"
-                              dangerouslySetInnerHTML={{ __html: postContent }}
+                          <div className="space-y-4">
+                            <Input
+                              id="post-image"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="w-full bg-gray-800/50 border-gray-700/50 text-gray-300 file:bg-purple-600 file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4"
+                              style={{
+                                backgroundColor: 'hsl(var(--input))',
+                                border: '1px solid hsl(var(--border) / 0.3)',
+                                color: 'hsl(var(--foreground))'
+                              }}
                             />
-                          )}
+                            
+                            {imagePreview && (
+                              <div className="mt-4">
+                                <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
+                                <img
+                                  src={imagePreview}
+                                  alt="Featured image preview"
+                                  className="max-w-full h-auto rounded-lg border border-gray-700/50"
+                                  style={{ maxHeight: '300px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label htmlFor="post-content" className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                            Post Content *
+                          </label>
+                          <Textarea
+                            id="post-content"
+                            value={postContent}
+                            onChange={(e) => setPostContent(e.target.value)}
+                            placeholder="Write your post content here... You can use HTML tags for formatting."
+                            className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 min-h-[400px] resize-none focus:border-purple-500 focus:ring-purple-500/20"
+                            disabled={isSaving}
+                            style={{
+                              backgroundColor: 'hsl(var(--input))',
+                              border: '1px solid hsl(var(--border) / 0.3)',
+                              color: 'hsl(var(--foreground))'
+                            }}
+                          />
+                          <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Tip: You can use HTML tags like &lt;p&gt;, &lt;h2&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, etc. for formatting.
+                          </p>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                              Technical Specifications (table-like)
+                            </label>
+                            <Button
+                              type="button"
+                              onClick={() => setTechItems(prev => [...prev, { key: '', value: '', icon: '', category: '', show: true }])}
+                              className="text-xs"
+                            >+ Add Row</Button>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {techItems.map((item, idx) => (
+                              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                <Input className="col-span-3" placeholder="Label (e.g., Location)" value={item.key} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
+                                <Input className="col-span-4" placeholder="Value" value={item.value} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
+                                <Input className="col-span-2" placeholder="Icon (optional)" value={item.icon ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, icon: e.target.value }: r))} />
+                                <Input className="col-span-2" placeholder="Category (opt)" value={item.category ?? ''} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, category: e.target.value }: r))} />
+                                <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setTechItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                            Tip: Leave icon/category blank to use a simple key/value look like the old static tables.
+                          </p>
+                          <div className="mt-3">
+                            <label htmlFor="post-technical-specs" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                              Or paste legacy HTML (optional)
+                            </label>
+                            <Textarea id="post-technical-specs" value={postTechnicalSpecs} onChange={(e)=>setPostTechnicalSpecs(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<table>...</table>" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                              Quick Info (key/value)
+                            </label>
+                            <Button type="button" onClick={() => setQuickItems(prev => [...prev, { key: '', value: '', show: true }])} className="text-xs">+ Add Row</Button>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {quickItems.map((item, idx) => (
+                              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                <Input className="col-span-5" placeholder="Title (e.g., Published)" value={item.key} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))} />
+                                <Input className="col-span-6" placeholder="Value" value={item.value} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))} />
+                                <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setQuickItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3">
+                            <label htmlFor="post-quick-info" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                              Or paste legacy text/HTML (optional)
+                            </label>
+                            <Textarea id="post-quick-info" value={postQuickInfo} onChange={(e)=>setPostQuickInfo(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="Quick bullets or HTML" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                              Event Program & Schedule
+                            </label>
+                            <Button type="button" onClick={() => setProgramItems(prev => [...prev, { time: '', activity: '', description: '', show: true }])} className="text-xs">+ Add Row</Button>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {programItems.map((item, idx) => (
+                              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                <Input className="col-span-3" placeholder="Time" value={item.time} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, time: e.target.value }: r))} />
+                                <Input className="col-span-5" placeholder="Activity" value={item.activity} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, activity: e.target.value }: r))} />
+                                <Input className="col-span-3" placeholder="Description (opt)" value={item.description ?? ''} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, description: e.target.value }: r))} />
+                                <input type="checkbox" className="col-span-1 h-5 w-5" checked={item.show} onChange={e => setProgramItems(s => s.map((r,i)=> i===idx? { ...r, show: e.target.checked }: r))} title="Show" />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3">
+                            <label htmlFor="post-event-program" className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                              Or paste legacy HTML (optional)
+                            </label>
+                            <Textarea id="post-event-program" value={postEventProgram} onChange={(e)=>setPostEventProgram(e.target.value)} className="bg-gray-800/50 border-gray-700/50 text-white min-h-[90px]" placeholder="<ul>...</ul>" />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                          <Button 
+                            onClick={handleCreatePost} 
+                            disabled={isSaving || !postTitle.trim() || !postContent.trim()}
+                            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors flex-1 sm:flex-none"
+                            style={{
+                              background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)))',
+                              color: 'hsl(var(--primary-foreground))',
+                              border: 'none',
+                              boxShadow: '0 4px 15px hsl(var(--primary) / 0.3)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 6px 20px hsl(var(--primary) / 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 4px 15px hsl(var(--primary) / 0.3)';
+                            }}
+                          >
+                            {isSaving ? (
+                              <>
+                                <span className="animate-spin mr-2">⏳</span>
+                                Publishing...
+                              </>
+                            ) : (
+                              <>
+                                <span className="mr-2">🚀</span>
+                                Publish Post
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button 
+                            variant="outline" 
+                            onClick={handleClearForm}
+                            disabled={isSaving}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-700 py-3 px-6 rounded-lg transition-colors"
+                            style={{
+                              border: '1px solid hsl(var(--border) / 0.3)',
+                              color: 'hsl(var(--foreground))'
+                            }}
+                          >
+                            Clear Form
+                          </Button>
+
+                          <Button 
+                            variant="outline" 
+                            onClick={() => navigate('/blog')}
+                            disabled={isSaving}
+                            className="border-purple-600 text-purple-400 hover:bg-purple-800/20 py-3 px-6 rounded-lg transition-colors"
+                            style={{
+                              border: '1px solid hsl(var(--primary))',
+                              color: 'hsl(var(--primary))'
+                            }}
+                          >
+                            View Blog
+                          </Button>
                         </div>
                       </div>
-                    )}
+
+                      {/* Preview Section */}
+                      {(postTitle || postContent || imagePreview) && (
+                        <div className="mt-8 pt-8 border-t border-gray-700/50">
+                          <h3 className="text-lg font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                            <span className="mr-2">👁️</span>
+                            Preview
+                          </h3>
+                          <div className="bg-gray-800/30 rounded-lg p-6 border border-gray-700/50">
+                            {postTitle && (
+                              <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>{postTitle}</h2>
+                            )}
+                            {imagePreview && (
+                              <div className="mb-6">
+                                <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>Preview:</p>
+                                <img
+                                  src={imagePreview}
+                                  alt="Featured image preview"
+                                  className="max-w-full h-auto rounded-lg border border-gray-700/50"
+                                  style={{ maxHeight: '300px' }}
+                                />
+                              </div>
+                            )}
+                            {postContent && (
+                              <div 
+                                className="text-gray-300 prose prose-invert max-w-none"
+                                dangerouslySetInnerHTML={{ __html: postContent }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </main>
           ) : activeView === 'scraper' ? (
             <main className="flex-1 w-full h-full overflow-auto">
-              <div className="flex-1 overflow-y-auto p-4 md:p-6">
+              {!isAdmin ? (
+                <div className="p-8 text-red-400">You are not authorized to access Scraper.</div>
+              ) : (
                 <ScraperPage 
                   isScraping={isScraping}
+                  setIsScraping={setIsScraping}
                   logs={logs}
-                  message={scraperMessage}
+                  setLogs={setLogs}
+                  scraperMessage={scraperMessage}
+                  setScraperMessage={setScraperMessage}
                   handleScrape={handleScrape}
                 />
-              </div>
+              )}
             </main>
           ) : activeView === 'my-posts' ? (
             <main className="flex-1 w-full h-full overflow-auto">

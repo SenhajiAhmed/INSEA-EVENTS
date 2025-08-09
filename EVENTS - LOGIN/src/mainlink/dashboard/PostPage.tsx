@@ -15,6 +15,8 @@ import {
   Snowflake
 } from 'lucide-react';
 
+import logo from '../../INSEA_Events_logo.png';
+
 interface Post {
   id: number;
   title: string;
@@ -35,6 +37,20 @@ const PostPage: React.FC = () => {
   const [imageModalOpen, setImageModalOpen] = useState<boolean>(false);
   const [imageLoading, setImageLoading] = useState<boolean>(true);
 
+  // Build a robust image src that handles absolute and relative paths
+  const getImageSrc = (imagePath?: string) => {
+    if (!imagePath) return '';
+    // Already an absolute URL
+    if (/^https?:\/\//i.test(imagePath)) return imagePath;
+    // Ensure leading slash then prefix API origin
+    const normalized = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `http://localhost:3000${normalized}`;
+  };
+
+  // Reset loading when image path changes
+  useEffect(() => {
+    setImageLoading(true);
+  }, [post?.image_path]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -82,7 +98,7 @@ const PostPage: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[hsl(229,24%,10%)]/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-16 relative">
             <Link 
               to="/blog" 
               className="flex items-center space-x-2 text-white/80 hover:text-white transition-colors"
@@ -90,6 +106,15 @@ const PostPage: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
               <span>Back to Blog</span>
             </Link>
+            
+            {/* Center Logo */}
+            <div className="absolute left-1/2 -translate-x-1/2">
+              <img
+                src={logo}
+                alt="INSEA Events Logo"
+                className="h-20 w-auto px-0 py-0"
+              />
+            </div>
             
             <div className="flex items-center space-x-3">
               <button className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all">
@@ -147,9 +172,11 @@ const PostPage: React.FC = () => {
                       
                       {/* Main Image */}
                       <img 
-                        src={`http://localhost:3000${post.image_path.startsWith('/') ? post.image_path : `/${post.image_path}`}`}
+                        src={getImageSrc(post.image_path)}
                         alt={post.title}
                         className={`w-full h-auto max-h-[600px] object-contain bg-gradient-to-br from-[hsl(229,24%,12%)] to-[hsl(229,24%,14%)] transition-all duration-500 group-hover:scale-[1.02] ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                        loading="lazy"
+                        crossOrigin="anonymous"
                         onError={(e) => {
                           console.error('Image failed to load:', e.currentTarget.src);
                           e.currentTarget.style.display = 'none';
@@ -234,16 +261,15 @@ const PostPage: React.FC = () => {
                   <span className="text-white text-lg font-bold">"</span>
                 </div>
                 <blockquote className="text-xl italic text-white/90 leading-relaxed mb-4">
-                  "There's something magical about gliding across the ice. It's like flying without wings, 
-                  dancing without gravity. Every visit to the Mega Mall ice rink feels like a new adventure."
+                  "Unite, Celebrate, Inspire"
                 </blockquote>
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold">S</span>
                   </div>
                   <div>
-                    <div className="text-white font-semibold">Sarah Chen</div>
-                    <div className="text-white/60 text-sm">Professional Figure Skater</div>
+                    <div className="text-white font-semibold">Unknown</div>
+                    <div className="text-white/60 text-sm">INSEA EVENTS Member</div>
                   </div>
                 </div>
               </div>
@@ -511,7 +537,7 @@ const PostPage: React.FC = () => {
             
             {/* Image */}
             <img 
-              src={`http://localhost:3000${post.image_path.startsWith('/') ? post.image_path : `/${post.image_path}`}`}
+              src={getImageSrc(post.image_path)}
               alt={post.title}
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
             />

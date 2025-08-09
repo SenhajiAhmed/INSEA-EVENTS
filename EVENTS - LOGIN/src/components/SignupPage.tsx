@@ -67,6 +67,8 @@ export default function SignupPage({ onSwitchToLogin }: SignupPageProps) {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', data.userId.toString());
+      // New users are not admin by default
+      localStorage.setItem('isAdmin', JSON.stringify(false));
       navigate('/main');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

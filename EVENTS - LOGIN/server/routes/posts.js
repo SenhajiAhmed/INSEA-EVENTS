@@ -256,7 +256,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        if (posts[0].user_id !== userId) {
+        // Allow owner or admin
+        if (posts[0].user_id !== userId && !req.user.isAdmin) {
             return res.status(403).json({ error: 'Forbidden: You can only edit your own posts' });
         }
 
@@ -295,7 +296,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        if (posts[0].user_id !== userId) {
+        // Allow owner or admin
+        if (posts[0].user_id !== userId && !req.user.isAdmin) {
             return res.status(403).json({ error: 'Forbidden: You can only delete your own posts' });
         }
 

@@ -67,6 +67,9 @@ export default function LoginPage({ onSwitchToSignup }: LoginPageProps) {
       // Store the token in localStorage (in production, consider using a more secure approach)
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', data.userId.toString());
+      if (typeof data.isAdmin !== 'undefined') {
+        localStorage.setItem('isAdmin', JSON.stringify(!!data.isAdmin));
+      }
 
       // Redirect to main page
       navigate('/main');
